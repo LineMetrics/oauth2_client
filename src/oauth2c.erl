@@ -30,12 +30,12 @@
     retrieve_access_token/4, 
     retrieve_access_token/5, 
     retrieve_access_token/6,
-    retrieve_access_token/7
-    ,request/3
-    ,request/4
-    ,request/5
-    ,request/6
-    ,request/7
+    retrieve_access_token/7,
+    request/3,
+    request/4,
+    request/5,
+    request/6,
+    request/7
     ]).
 
 -type method()       :: head | get | put | post | trace | options | delete.
@@ -86,8 +86,12 @@
 retrieve_access_token(Type, Url, ID, Secret) ->
     retrieve_access_token(Type, Url, ID, Secret, undefined,undefined,undefined).
 
-%% left in for backwards compatibility
--spec retrieve_access_token(Type, URL, ID, Secret, Scope) ->
+ %           {<<"grant_type">>, Client#client.grant_type},
+ %           {<<"refresh_token">>, RefreshToken},
+ %           {<<"client_id">>, Id},
+ %           {<<"client_secret">>, Secret}
+% url
+-spec retrieve_access_token(Type,URL,ID,Secret,TokenOrScope) ->
     {ok, Headers::headers(), #client{}} | 
     {ok, Headers::headers(), #client{}, RefreshToken::binary()} | 
     {error, Reason :: binary()} when
@@ -95,9 +99,20 @@ retrieve_access_token(Type, Url, ID, Secret) ->
     URL    :: url(),
     ID     :: binary(),
     Secret :: binary(),
-    Scope  :: binary() | undefined.
-retrieve_access_token(Type, Url, ID, Secret, Scope) ->
-    retrieve_access_token(Type, Url, ID, Secret, Scope,undefined,undefined).
+    TokenOrScope :: binary() | undefined.
+
+retrieve_access_token(<<"refresh_token">>,Url,ID,Secret,TokenOrScope) ->
+    Client = #client{
+            grant_type     = <<"refresh_token">>,
+            auth_url      = Url,
+            id            = ID,
+            secret        = Secret,
+            refresh_token = TokenOrScope
+            },
+    do_retrieve_access_token(Client);
+
+retrieve_access_token(Type, Url, ID, Secret, TokenOrScope) ->
+    retrieve_access_token(Type, Url, ID, Secret, TokenOrScope,undefined,undefined).
 
 -spec retrieve_access_token(Type, URL, ID, Secret, Scope, RedirectURI) ->
     {ok, Headers::headers(), #client{}} | 
