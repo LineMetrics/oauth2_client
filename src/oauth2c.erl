@@ -90,7 +90,7 @@ retrieve_access_token(Type, Url, ID, Secret) ->
  %           {<<"refresh_token">>, RefreshToken},
  %           {<<"client_id">>, Id},
  %           {<<"client_secret">>, Secret}
-% url
+ % url
 -spec retrieve_access_token(Type,URL,ID,Secret,TokenOrScope) ->
     {ok, Headers::headers(), #client{}} | 
     {ok, Headers::headers(), #client{}, RefreshToken::binary()} | 
@@ -124,6 +124,7 @@ retrieve_access_token(Type, Url, ID, Secret, TokenOrScope) ->
     Secret      :: binary(),
     Scope       :: binary() | undefined,
     RedirectURI :: binary() | undefined.
+
 retrieve_access_token(Type, Url, ID, Secret, Scope, RedirectURI) ->
     retrieve_access_token(Type, Url, ID, Secret, Scope,RedirectURI,undefined).
 
@@ -139,6 +140,7 @@ retrieve_access_token(Type, Url, ID, Secret, Scope, RedirectURI) ->
     Scope       :: binary() | undefined,
     RedirectURI :: binary() | undefined,
     AuthCode    :: binary() | undefined.
+
 retrieve_access_token(Type, Url, ID, Secret, Scope, RedirectURI, AuthCode) ->
     Client = #client{
             grant_type     = Type
@@ -159,6 +161,7 @@ retrieve_access_token(Type, Url, ID, Secret, Scope, RedirectURI, AuthCode) ->
     Method :: method(),
     Url    :: url(),
     Client :: #client{}.
+
 request(Method, Url, Client) ->
     request(Method, ?DEFAULT_ENCODING, Url, [], [], [], Client).
 
@@ -167,6 +170,7 @@ request(Method, Url, Client) ->
     Url    :: url(),
     Expect :: status_codes(),
     Client :: #client{}.
+
 request(Method, Url, Expect, Client) ->
     request(Method, ?DEFAULT_ENCODING, Url, Expect, [], [], Client).
 
@@ -176,6 +180,7 @@ request(Method, Url, Expect, Client) ->
     Url    :: url(),
     Expect :: status_codes(),
     Client :: #client{}.
+
 request(Method, Type, Url, Expect, Client) ->
     request(Method, Type, Url, Expect, [], [], Client).
 
@@ -370,6 +375,7 @@ do_request(Method, Type, Url, Expect, Headers, Body, Client) ->
     Headers2 = add_auth_header(Headers, Client2),
     {restc:request(Method, Type, binary_to_list(Url), Expect, Headers2, Body), Client2}.
 
+-spec add_auth_header(headers(),#client{}) -> headers().
 add_auth_header(Headers, #client{access_token = AccessToken,token_type = TokenType}) ->
     case TokenType of 
         undefined -> Ttype = <<"token ">>;
@@ -378,13 +384,14 @@ add_auth_header(Headers, #client{access_token = AccessToken,token_type = TokenTy
     AH = {"Authorization", binary_to_list(<<Ttype/binary, AccessToken/binary>>)},
     [AH | proplists:delete("Authorization", Headers)].
 
+-spec calculate_expiry(integer()) -> integer().
 calculate_expiry(Seconds) ->
     Now = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
     Now + Seconds.
 
+-spec check_expired(#client{}) -> #client{}.
 check_expired(#client{expires_in = ExpiresIn} = Client) ->
-    Now = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
-    
+    Now = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),    
     Test = ((ExpiresIn - Now) > 0),
     case Test of
         true -> Client;
@@ -396,8 +403,6 @@ check_expired(#client{expires_in = ExpiresIn} = Client) ->
                     secret        = Client#client.secret,
                     scope         = Client#client.scope
                     },
-            io:format("requesting new token~n"),
             {ok, _, C} = do_retrieve_access_token(TmpClient),
-            io:format("new token: ~p~n", [C]),
             C   
     end.
