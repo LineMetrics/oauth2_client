@@ -38,6 +38,20 @@
     request/7
     ]).
 
+-record(client, {
+        grant_type    = undefined :: binary() | undefined,
+        auth_url      = undefined :: binary() | undefined,
+        access_token  = undefined :: binary() | undefined,
+        refresh_token = undefined :: binary() | undefined,
+        token_type    = undefined :: token_type() | undefined,
+        id            = undefined :: binary() | undefined,
+        secret        = undefined :: binary() | undefined,
+        scope         = undefined :: binary() | undefined,
+        redirect_uri  = undefined :: binary() | undefined,
+        expires_in    = undefined :: integer() | undefined,
+        auth_code     = undefined :: binary() | undefined
+        }).
+
 -type method()       :: head | get | put | post | trace | options | delete.
 -type url()          :: binary().
 -type at_type()      :: binary(). %% <<"password">> or <<"client_credentials">>
@@ -50,26 +64,20 @@
 -type property()     :: atom() | tuple().
 -type proplist()     :: [property()].
 -type body()         :: proplist().
--type response()     :: {ok, Status::status_code(), Headers::headers(), Body::body()} |
-    {error, Status::status_code(), Headers::headers(), Body::body()} |
-    {error, Reason::reason()}.
+%%-type response()     :: {ok, Status::status_code(), Headers::headers(), Body::body()} |
+%%    {error, Status::status_code(), Headers::headers(), Body::body()} |
+%%    {error, Reason::reason()}.
+-type restc_response() :: {ok, Status::status_code(), Headers::headers(), Body::body()} |
+                          {error, Status::status_code(), Headers::headers(), Body::body()} |
+                          {error, Reason::reason()}.
+-type response()       :: {restc_response(), #client{}}.
+-type token_type()     :: bearer | unsupported.
 
 
 -define(DEFAULT_ENCODING, json).
 
--record(client, {
-        grant_type    = undefined :: binary(),
-        auth_url      = undefined :: binary(),
-        access_token  = undefined :: binary(),
-        refresh_token = undefined :: binary(),
-        id            = undefined :: binary(),
-        secret        = undefined :: binary(),
-        scope         = undefined :: binary(),
-        redirect_uri  = undefined :: binary(),
-        expires_in    = undefined :: integer(),
-        token_type    = undefined :: binary(),
-        auth_code     = undefined :: binary()
-        }).
+
+
 
 
 %%% API ========================================================================
@@ -270,11 +278,13 @@ do_retrieve_access_token(#client{grant_type = <<"client_credentials">>,
         {ok, _, Headers, Body} ->
             AccessToken = proplists:get_value(<<"access_token">>, Body),
             RefreshToken = proplists:get_value(<<"refresh_token">>, Body),
+            TokenType = proplists:get_value(<<"token_type">>, Body, ""),
             Result = #client{
                     grant_type      = Client#client.grant_type
                     ,auth_url       = Client#client.auth_url
                     ,access_token   = AccessToken
                     ,refresh_token  = RefreshToken
+                    ,token_type   = get_token_type(TokenType)
                     ,id             = Client#client.id
                     ,secret         = Client#client.secret
                     ,scope          = Client#client.scope
@@ -370,6 +380,14 @@ do_retrieve_access_token(#client{
             {error, Reason}
     end.
 
+-spec get_token_type(binary()) -> token_type().
+get_token_type(Type) ->
+    get_str_token_type(string:to_lower(binary_to_list(Type))).
+
+-spec get_str_token_type(string()) -> token_type().
+get_str_token_type("bearer") -> bearer;
+get_str_token_type(_Else) -> unsupported.
+
 do_request(Method, Type, Url, Expect, Headers, Body, Client) ->
     Client2 = check_expired(Client),
     Headers2 = add_auth_header(Headers, Client2),
@@ -377,11 +395,8 @@ do_request(Method, Type, Url, Expect, Headers, Body, Client) ->
 
 -spec add_auth_header(headers(),#client{}) -> headers().
 add_auth_header(Headers, #client{access_token = AccessToken,token_type = TokenType}) ->
-    case TokenType of 
-        undefined -> Ttype = <<"token ">>;
-        _ -> Ttype = <<TokenType/binary, " ">> 
-    end, 
-    AH = {"Authorization", binary_to_list(<<Ttype/binary, AccessToken/binary>>)},
+    Prefix = autorization_prefix(TokenType),
+    AH = {"Authorization", binary_to_list(<<Prefix/binary, " ", AccessToken/binary>>)},
     [AH | proplists:delete("Authorization", Headers)].
 
 -spec calculate_expiry(integer()) -> integer().
@@ -406,3 +421,7 @@ check_expired(#client{expires_in = ExpiresIn} = Client) ->
             {ok, _, C} = do_retrieve_access_token(TmpClient),
             C   
     end.
+
+-spec autorization_prefix(token_type()) -> binary().
+autorization_prefix(bearer) -> <<"Bearer">>;
+autorization_prefix(unsupported) -> <<"token">>.
