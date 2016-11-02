@@ -393,6 +393,7 @@ get_str_token_type(_Else) -> unsupported.
 do_request(Method, Type, Url, Expect, Headers, Body, Client) ->
     Client2 = check_expired(Client),
     Headers2 = add_auth_header(Headers, Client2),
+   io:format("Request Headers: ~p",[Headers2]),
     {restc:request(Method, Type, binary_to_list(Url), Expect, Headers2, Body), Client2}.
 
 -spec add_auth_header(headers(),#client{}) -> headers().
