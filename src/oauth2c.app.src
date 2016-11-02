@@ -27,7 +27,7 @@
 {application, oauth2c,
  [
   {description, "Erlang OAuth2 Client"},
-  {vsn, git},
+  {vsn, "0.2.0"},
   {registered, []},
   {applications, [
                   kernel,
