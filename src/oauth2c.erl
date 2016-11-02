@@ -399,7 +399,9 @@ add_auth_header(Headers, #client{access_token = AccessToken,token_type = TokenTy
     AH = {"Authorization", binary_to_list(<<Prefix/binary, " ", AccessToken/binary>>)},
     [AH | proplists:delete("Authorization", Headers)].
 
--spec calculate_expiry(integer()) -> integer().
+-spec calculate_expiry(undefined|integer()) -> integer().
+calculate_expiry(undefined) ->
+   calculate_expiry(60000);
 calculate_expiry(Seconds) ->
     Now = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
     Now + Seconds.
