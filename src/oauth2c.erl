@@ -404,7 +404,7 @@ add_auth_header(Headers, #client{access_token = AccessToken,token_type = TokenTy
 
 -spec calculate_expiry(undefined|integer()) -> integer().
 calculate_expiry(undefined) ->
-   calculate_expiry(60000);
+   calculate_expiry(3600);
 calculate_expiry(Seconds) ->
     Now = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
     Now + Seconds.
